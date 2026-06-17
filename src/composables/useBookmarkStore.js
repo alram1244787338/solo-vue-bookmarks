@@ -25,6 +25,7 @@ function initData() {
         id: generateId(),
         title: 'Vue.js',
         url: 'https://vuejs.org',
+        description: '渐进式 JavaScript 框架，用于构建用户界面',
         tags: ['前端', '框架'],
         folderId: defaultFolderId,
         createdAt: Date.now()
@@ -33,6 +34,7 @@ function initData() {
         id: generateId(),
         title: 'GitHub',
         url: 'https://github.com',
+        description: '全球最大的代码托管平台和开发者社区',
         tags: ['开发', '工具'],
         folderId: defaultFolderId,
         createdAt: Date.now()
@@ -41,6 +43,7 @@ function initData() {
         id: generateId(),
         title: 'MDN Web Docs',
         url: 'https://developer.mozilla.org',
+        description: 'Mozilla 官方 Web 开发技术文档',
         tags: ['前端', '文档'],
         folderId: defaultFolderId,
         createdAt: Date.now()
@@ -94,6 +97,7 @@ export function useBookmarkStore() {
       result = result.filter(b =>
         b.title.toLowerCase().includes(query) ||
         b.url.toLowerCase().includes(query) ||
+        (b.description && b.description.toLowerCase().includes(query)) ||
         b.tags.some(tag => tag.toLowerCase().includes(query))
       )
     }
@@ -165,11 +169,12 @@ export function useBookmarkStore() {
     currentFolderId.value = folderId
   }
 
-  function addBookmark({ title, url, tags = [], folderId = null }) {
+  function addBookmark({ title, url, description = '', tags = [], folderId = null }) {
     const bookmark = {
       id: generateId(),
       title: title || url,
       url,
+      description,
       tags,
       folderId: folderId || currentFolderId.value,
       createdAt: Date.now()
@@ -240,6 +245,48 @@ export function useBookmarkStore() {
         id: generateId(),
         title: b.title || b.url,
         url: b.url,
+        description: b.description || '',
+        tags: b.tags || [],
+        folderId: b.folderId || folderId,
+        createdAt: Date.now()
+      }
+      bookmarks.value.push(bookmark)
+    })
+  }
+
+  function getOrCreateFolderByPath(path, parentId = null) {
+    if (!path || path.length === 0) return parentId
+
+    let currentParentId = parentId
+    for (const folderName of path) {
+      let folder = folders.value.find(f => f.name === folderName && f.parentId === currentParentId)
+      if (!folder) {
+        folder = {
+          id: generateId(),
+          name: folderName,
+          parentId: currentParentId
+        }
+        folders.value.push(folder)
+      }
+      currentParentId = folder.id
+    }
+    return currentParentId
+  }
+
+  function importBookmarksWithFolders(parsedBookmarks) {
+    parsedBookmarks.forEach(b => {
+      let folderId
+      if (b.folderPath && b.folderPath.length > 0) {
+        folderId = getOrCreateFolderByPath(b.folderPath, null)
+      } else {
+        folderId = currentFolderId.value
+      }
+
+      const bookmark = {
+        id: generateId(),
+        title: b.title || b.url,
+        url: b.url,
+        description: b.description || '',
         tags: b.tags || [],
         folderId,
         createdAt: Date.now()
@@ -282,6 +329,9 @@ export function useBookmarkStore() {
       folderBookmarks.forEach(b => {
         const tags = b.tags.join(',')
         lines.push(`${indent}  <DT><A HREF="${b.url}" TAGS="${tags}">${b.title}</A>`)
+        if (b.description) {
+          lines.push(`${indent}  <DD>${b.description}`)
+        }
       })
 
       childFolders.forEach(child => {
@@ -336,6 +386,7 @@ export function useBookmarkStore() {
     clearActiveTags,
     setSearchQuery,
     importBookmarks,
+    importBookmarksWithFolders,
     exportBookmarksJson,
     exportBookmarksHtml,
     getFavicon

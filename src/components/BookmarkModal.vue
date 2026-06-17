@@ -28,6 +28,16 @@
         </div>
 
         <div class="form-group">
+          <label class="form-label">描述</label>
+          <textarea
+            v-model="form.description"
+            class="form-input form-textarea"
+            rows="3"
+            placeholder="书签描述（可选）"
+          ></textarea>
+        </div>
+
+        <div class="form-group">
           <label class="form-label">标签（用逗号分隔）</label>
           <input
             v-model="tagsInput"
@@ -65,6 +75,7 @@ const emit = defineEmits(['close', 'submit'])
 const form = ref({
   title: '',
   url: '',
+  description: '',
   tags: []
 })
 
@@ -79,6 +90,7 @@ watch(
       form.value = {
         title: props.bookmark.title,
         url: props.bookmark.url,
+        description: props.bookmark.description || '',
         tags: [...props.bookmark.tags]
       }
       tagsInput.value = props.bookmark.tags.join(', ')
@@ -86,6 +98,7 @@ watch(
       form.value = {
         title: '',
         url: '',
+        description: '',
         tags: []
       }
       tagsInput.value = ''
@@ -109,6 +122,7 @@ function handleSubmit() {
   const data = {
     title: form.value.title || form.value.url,
     url: form.value.url,
+    description: form.value.description || '',
     tags
   }
 
@@ -212,6 +226,13 @@ function handleSubmit() {
 .form-input:focus {
   border-color: var(--color-primary);
   box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.1);
+}
+
+.form-textarea {
+  resize: vertical;
+  min-height: 72px;
+  line-height: 1.5;
+  font-family: inherit;
 }
 
 .modal-footer {

@@ -37,6 +37,10 @@
       {{ displayUrl }}
     </div>
 
+    <div class="card-description" v-if="bookmark.description">
+      {{ bookmark.description }}
+    </div>
+
     <div class="card-tags" v-if="bookmark.tags && bookmark.tags.length > 0">
       <span
         v-for="tag in bookmark.tags"
@@ -197,6 +201,16 @@ function handleClick() {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.card-description {
+  font-size: 12px;
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 }
 
 .card-tags {

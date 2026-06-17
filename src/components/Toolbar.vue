@@ -90,7 +90,7 @@ function handleImport(e) {
       } else if (file.name.endsWith('.html')) {
         const bookmarks = parseBookmarkHtml(content)
         if (bookmarks.length > 0) {
-          store.importBookmarks(bookmarks)
+          store.importBookmarksWithFolders(bookmarks)
           alert(`成功导入 ${bookmarks.length} 个书签`)
         } else {
           alert('未找到书签')

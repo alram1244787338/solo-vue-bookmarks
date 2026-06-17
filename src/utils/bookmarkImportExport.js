@@ -3,35 +3,67 @@ export function parseBookmarkHtml(html) {
   const doc = parser.parseFromString(html, 'text/html')
   const bookmarks = []
 
-  function parseDl(dlElement) {
+  function parseDl(dlElement, folderPath = []) {
     const children = dlElement.children
-    for (let i = 0; i < children.length; i++) {
+    let i = 0
+    while (i < children.length) {
       const child = children[i]
       if (child.tagName === 'DT') {
-        const dtChildren = child.children
-        for (let j = 0; j < dtChildren.length; j++) {
-          const dtChild = dtChildren[j]
-          if (dtChild.tagName === 'A') {
-            const tagsAttr = dtChild.getAttribute('TAGS') || ''
-            const tags = tagsAttr ? tagsAttr.split(',').map(t => t.trim()).filter(Boolean) : []
-            bookmarks.push({
-              title: dtChild.textContent || dtChild.getAttribute('HREF'),
-              url: dtChild.getAttribute('HREF'),
-              tags
-            })
-          } else if (dtChild.tagName === 'H3') {
-            // 文件夹标题，跳过，下一个 DL 是文件夹内容
-          } else if (dtChild.tagName === 'DL') {
-            parseDl(dtChild)
+        const dtChildren = Array.from(child.children)
+
+        const h3El = dtChildren.find(el => el.tagName === 'H3')
+        const aEl = dtChildren.find(el => el.tagName === 'A')
+        const dlEl = dtChildren.find(el => el.tagName === 'DL')
+
+        if (aEl) {
+          const tagsAttr = aEl.getAttribute('TAGS') || ''
+          const tags = tagsAttr ? tagsAttr.split(',').map(t => t.trim()).filter(Boolean) : []
+
+          let description = ''
+          let nextSibling = children[i + 1]
+          if (nextSibling && nextSibling.tagName === 'DD') {
+            description = nextSibling.textContent.trim()
+            i++
+          } else {
+            const ddInDt = dtChildren.find(el => el.tagName === 'DD')
+            if (ddInDt) {
+              description = ddInDt.textContent.trim()
+            }
+          }
+
+          bookmarks.push({
+            title: aEl.textContent || aEl.getAttribute('HREF'),
+            url: aEl.getAttribute('HREF'),
+            description,
+            tags,
+            folderPath: [...folderPath]
+          })
+        } else if (h3El && dlEl) {
+          const folderName = h3El.textContent
+          parseDl(dlEl, [...folderPath, folderName])
+        } else if (h3El) {
+          let nextIdx = i + 1
+          while (nextIdx < children.length) {
+            if (children[nextIdx].tagName === 'DL') {
+              const folderName = h3El.textContent
+              parseDl(children[nextIdx], [...folderPath, folderName])
+              i = nextIdx
+              break
+            }
+            if (children[nextIdx].tagName === 'DT') {
+              break
+            }
+            nextIdx++
           }
         }
       }
+      i++
     }
   }
 
-  const dlElements = doc.querySelectorAll('DL')
-  if (dlElements.length > 0) {
-    parseDl(dlElements[0])
+  const firstDl = doc.querySelector('DL')
+  if (firstDl) {
+    parseDl(firstDl, [])
   }
 
   return bookmarks
