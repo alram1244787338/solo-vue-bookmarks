@@ -9,7 +9,11 @@ const searchQuery = ref('')
 const activeTags = ref([])
 const expandedFolderIds = ref(new Set())
 
+let initialized = false
+
 function initData() {
+  if (initialized) return
+
   const saved = loadFromStorage()
   if (saved) {
     folders.value = saved.folders || []
@@ -57,6 +61,19 @@ function initData() {
       }
     ]
   }
+
+  initialized = true
+}
+
+function resetStore() {
+  folders.value = []
+  bookmarks.value = []
+  currentFolderId.value = null
+  searchQuery.value = ''
+  activeTags.value = []
+  expandedFolderIds.value = new Set()
+  initialized = false
+  window.localStorage.clear()
 }
 
 initData()
@@ -140,7 +157,10 @@ export function useBookmarkStore() {
   function renameFolder(folderId, newName) {
     const folder = folders.value.find(f => f.id === folderId)
     if (folder) {
-      folder.name = newName
+      const trimmedName = newName?.trim()
+      if (trimmedName) {
+        folder.name = trimmedName
+      }
     }
   }
 
@@ -422,6 +442,8 @@ export function useBookmarkStore() {
     importBookmarksWithFolders,
     exportBookmarksJson,
     exportBookmarksHtml,
-    getFavicon
+    getFavicon,
+    resetStore,
+    initData
   }
 }
