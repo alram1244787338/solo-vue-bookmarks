@@ -7,6 +7,7 @@ const bookmarks = ref([])
 const currentFolderId = ref(null)
 const searchQuery = ref('')
 const activeTags = ref([])
+const expandedFolderIds = ref(new Set())
 
 function initData() {
   const saved = loadFromStorage()
@@ -14,12 +15,18 @@ function initData() {
     folders.value = saved.folders || []
     bookmarks.value = saved.bookmarks || []
     currentFolderId.value = saved.currentFolderId || null
+    if (saved.expandedFolderIds) {
+      expandedFolderIds.value = new Set(saved.expandedFolderIds)
+    } else {
+      folders.value.forEach(f => expandedFolderIds.value.add(f.id))
+    }
   } else {
     const defaultFolderId = generateId()
     folders.value = [
       { id: defaultFolderId, name: '未分类', parentId: null }
     ]
     currentFolderId.value = defaultFolderId
+    expandedFolderIds.value.add(defaultFolderId)
     bookmarks.value = [
       {
         id: generateId(),
@@ -55,12 +62,13 @@ function initData() {
 initData()
 
 watch(
-  () => [folders.value, bookmarks.value, currentFolderId.value],
+  () => [folders.value, bookmarks.value, currentFolderId.value, expandedFolderIds.value],
   () => {
     saveToStorage({
       folders: folders.value,
       bookmarks: bookmarks.value,
-      currentFolderId: currentFolderId.value
+      currentFolderId: currentFolderId.value,
+      expandedFolderIds: Array.from(expandedFolderIds.value)
     })
   },
   { deep: true }
@@ -122,6 +130,10 @@ export function useBookmarkStore() {
       parentId
     }
     folders.value.push(folder)
+    expandedFolderIds.value.add(folder.id)
+    if (parentId) {
+      expandedFolderIds.value.add(parentId)
+    }
     return folder
   }
 
@@ -138,6 +150,8 @@ export function useBookmarkStore() {
 
     const allChildIds = getAllChildFolderIds(folderId)
     allChildIds.push(folderId)
+
+    allChildIds.forEach(id => expandedFolderIds.value.delete(id))
 
     const defaultFolder = folders.value.find(f => f.parentId === null && f.id !== folderId)
     const targetFolderId = defaultFolder ? defaultFolder.id : null
@@ -167,6 +181,22 @@ export function useBookmarkStore() {
 
   function setCurrentFolder(folderId) {
     currentFolderId.value = folderId
+  }
+
+  function isFolderExpanded(folderId) {
+    return expandedFolderIds.value.has(folderId)
+  }
+
+  function toggleFolderExpanded(folderId) {
+    if (expandedFolderIds.value.has(folderId)) {
+      expandedFolderIds.value.delete(folderId)
+    } else {
+      expandedFolderIds.value.add(folderId)
+    }
+  }
+
+  function expandFolder(folderId) {
+    expandedFolderIds.value.add(folderId)
   }
 
   function addBookmark({ title, url, description = '', tags = [], folderId = null }) {
@@ -376,6 +406,9 @@ export function useBookmarkStore() {
     renameFolder,
     deleteFolder,
     setCurrentFolder,
+    isFolderExpanded,
+    toggleFolderExpanded,
+    expandFolder,
     addBookmark,
     updateBookmark,
     deleteBookmark,

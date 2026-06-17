@@ -86,14 +86,18 @@ const emit = defineEmits(['select', 'add-child', 'rename', 'delete', 'drop-bookm
 
 const store = useBookmarkStore()
 
-const isExpanded = ref(true)
 const isEditing = ref(false)
 const editName = ref('')
 const editInput = ref(null)
 const isDragOver = ref(false)
+const dragCounter = ref(0)
 
 const isActive = computed(() => {
   return store.currentFolderId.value === props.folder.id
+})
+
+const isExpanded = computed(() => {
+  return store.isFolderExpanded(props.folder.id)
 })
 
 const childFolders = computed(() => {
@@ -111,12 +115,12 @@ function handleClick() {
 }
 
 function toggleExpand() {
-  isExpanded.value = !isExpanded.value
+  store.toggleFolderExpanded(props.folder.id)
 }
 
 function handleAddChild() {
   emit('add-child', props.folder.id)
-  isExpanded.value = true
+  store.expandFolder(props.folder.id)
 }
 
 function startRename() {
@@ -147,14 +151,20 @@ function handleDelete() {
 }
 
 function handleDragOver(e) {
+  dragCounter.value++
   isDragOver.value = true
 }
 
 function handleDragLeave() {
-  isDragOver.value = false
+  dragCounter.value--
+  if (dragCounter.value <= 0) {
+    dragCounter.value = 0
+    isDragOver.value = false
+  }
 }
 
 function handleDrop(e) {
+  dragCounter.value = 0
   isDragOver.value = false
   const bookmarkId = e.dataTransfer.getData('bookmarkId')
   if (bookmarkId) {
@@ -204,8 +214,13 @@ onUnmounted(() => {
 }
 
 .folder-item.drag-over {
-  background: var(--color-primary-light);
-  border: 2px dashed var(--color-primary);
+  background: rgba(79, 70, 229, 0.12);
+  outline: 2px dashed var(--color-primary);
+  outline-offset: -2px;
+}
+
+.folder-item.drag-over .folder-icon {
+  transform: scale(1.2);
 }
 
 .folder-item-content {
@@ -241,6 +256,7 @@ onUnmounted(() => {
 
 .folder-icon {
   font-size: 16px;
+  transition: transform var(--transition-fast);
 }
 
 .folder-name {

@@ -4,61 +4,54 @@ export function parseBookmarkHtml(html) {
   const bookmarks = []
 
   function parseDl(dlElement, folderPath = []) {
-    const children = dlElement.children
+    const children = Array.from(dlElement.children)
     let i = 0
     while (i < children.length) {
-      const child = children[i]
-      if (child.tagName === 'DT') {
-        const dtChildren = Array.from(child.children)
+      const node = children[i]
 
-        const h3El = dtChildren.find(el => el.tagName === 'H3')
-        const aEl = dtChildren.find(el => el.tagName === 'A')
-        const dlEl = dtChildren.find(el => el.tagName === 'DL')
+      if (node.tagName === 'DT') {
+        const h3 = findDirectChild(node, 'H3')
+        const a = findDirectChild(node, 'A')
 
-        if (aEl) {
-          const tagsAttr = aEl.getAttribute('TAGS') || ''
-          const tags = tagsAttr ? tagsAttr.split(',').map(t => t.trim()).filter(Boolean) : []
-
+        if (a) {
           let description = ''
-          let nextSibling = children[i + 1]
-          if (nextSibling && nextSibling.tagName === 'DD') {
-            description = nextSibling.textContent.trim()
+          if (i + 1 < children.length && children[i + 1].tagName === 'DD') {
+            description = children[i + 1].textContent.trim()
             i++
-          } else {
-            const ddInDt = dtChildren.find(el => el.tagName === 'DD')
-            if (ddInDt) {
-              description = ddInDt.textContent.trim()
-            }
           }
 
+          const tagsAttr = a.getAttribute('TAGS') || ''
+          const tags = tagsAttr ? tagsAttr.split(',').map(t => t.trim()).filter(Boolean) : []
+
           bookmarks.push({
-            title: aEl.textContent || aEl.getAttribute('HREF'),
-            url: aEl.getAttribute('HREF'),
+            title: a.textContent || a.getAttribute('HREF'),
+            url: a.getAttribute('HREF'),
             description,
             tags,
             folderPath: [...folderPath]
           })
-        } else if (h3El && dlEl) {
-          const folderName = h3El.textContent
-          parseDl(dlEl, [...folderPath, folderName])
-        } else if (h3El) {
-          let nextIdx = i + 1
-          while (nextIdx < children.length) {
-            if (children[nextIdx].tagName === 'DL') {
-              const folderName = h3El.textContent
-              parseDl(children[nextIdx], [...folderPath, folderName])
-              i = nextIdx
-              break
-            }
-            if (children[nextIdx].tagName === 'DT') {
-              break
-            }
-            nextIdx++
+        } else if (h3) {
+          const folderName = h3.textContent.trim()
+
+          const dlInside = findDirectChild(node, 'DL')
+          if (dlInside) {
+            parseDl(dlInside, [...folderPath, folderName])
+          } else if (i + 1 < children.length && children[i + 1].tagName === 'DL') {
+            parseDl(children[i + 1], [...folderPath, folderName])
+            i++
           }
         }
       }
+
       i++
     }
+  }
+
+  function findDirectChild(parent, tagName) {
+    for (const child of parent.children) {
+      if (child.tagName === tagName) return child
+    }
+    return null
   }
 
   const firstDl = doc.querySelector('DL')
